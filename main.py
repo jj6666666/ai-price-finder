@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import requests
-from bs4 import BeautifulSoup
-import re
+from serpapi import GoogleSearch
 from typing import List, Dict
+import os
 
 app = FastAPI()
 
@@ -15,116 +14,112 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ------------------------------
-# 1. SEARCH VIA DUCKDUCKGO HTML
-# ------------------------------
+# TODO: put your SerpApi key here or in an env var on Render
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "YOUR_SERPAPI_KEY_HERE")
 
-def ddg_search(query: str, max_results: int = 5) -> List[str]:
-    """
-    Use DuckDuckGo's HTML results page to get some URLs.
-    This is a very simple HTML search. Check DDG's terms before
-    using heavily.
-    """
-    url = "https://duckduckgo.com/html/"
-    params = {"q": query + " buy pet product"}
-    headers = {"User-Agent": "Mozilla/5.0"}
-    resp = requests.get(url, params=params, headers=headers, timeout=10)
-    resp.raise_for_status()
 
-    soup = BeautifulSoup(resp.text, "html.parser")
-    links = []
-    for a in soup.select("a.result__a"):
-        href = a.get("href")
-        if not href:
+def search_serpapi_google_shopping(query: str, country: str = "uk") -> List[Dict]:
+    """
+    Use SerpApi's Google Shopping engine to search for products.
+    Returns a list of simplified product dicts.
+    """
+    params = {
+        "engine": "google_shopping",
+        "q": query,
+        "api_key": SERPAPI_KEY,
+        "gl": country,   # country code (uk/us/de etc.)
+        "hl": "en",      # language
+        "num": 20,       # number of results
+    }
+
+    search = GoogleSearch(params)
+    result = search.get_dict()
+
+    products = []
+
+    # SerpApi returns results under "shopping_results"
+    for item in result.get("shopping_results", []):
+        title = item.get("title")
+        price = item.get("price")
+        source = item.get("source")
+        link = item.get("link")
+        # Some results have "product_id" and "currency", but "price" is enough for now
+        if not title or not price or not link:
             continue
-        # skip duckduckgo internal links
-        if href.startswith("https://duckduckgo.com"):
-            continue
-        # skip obvious non-product stuff
-        if any(bad in href for bad in ["wikipedia.org", "youtube.com"]):
-            continue
-        links.append(href)
-        if len(links) >= max_results:
-            break
-    return links
 
-# ------------------------------
-# 2. SCRAPE A SINGLE PAGE
-# ------------------------------
+        # price is a string like "£9.99" or "$12.50"
+        products.append(
+            {
+                "title": title,
+                "price_raw": price,
+                "source": source,
+                "link": link,
+            }
+        )
 
-PRICE_RE = re.compile(r"(£|\$|€)\s?(\d+(?:\.\d{1,2})?)")
+    return products
 
-def scrape_prices_from_url(url: str) -> List[Dict]:
+
+def parse_price_to_number(price_raw: str) -> float:
     """
-    Fetch a product-like page and extract all currency prices we can see.
+    Convert price string like '£9.99', '$12.50', '9.99 USD' into a float.
+    Very simple parser – good enough for MVP.
     """
-    results: List[Dict] = []
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        title = soup.title.text.strip() if soup.title else "Unknown product"
+    import re
 
-        for match in PRICE_RE.findall(r.text):
-            currency, amount = match
-            try:
-                price_val = float(amount)
-            except ValueError:
-                continue
-            results.append(
-                {
-                    "title": title,
-                    "price": price_val,
-                    "currency": currency,
-                    "url": url,
-                }
-            )
-    except Exception as e:
-        print("Error scraping", url, e)
+    match = re.search(r"(\d+(?:\.\d{1,2})?)", price_raw)
+    if not match:
+        return 0.0
+    return float(match.group(1))
 
-    return results
-
-# ------------------------------
-# 3. MAIN SEARCH ENDPOINT
-# ------------------------------
 
 @app.get("/search")
-def search(query: str):
+def search(query: str, country: str = "uk"):
     """
-    1) Search the web for the query
-    2) Visit the top few result URLs
-    3) Extract any prices we see
-    4) Return the cheapest price and all raw hits
+    Main search endpoint used by your frontend.
+    1) Calls SerpApi Google Shopping
+    2) Normalises prices
+    3) Picks the cheapest
     """
-    try:
-        urls = ddg_search(query)
-    except Exception as e:
+    if not SERPAPI_KEY or SERPAPI_KEY == "YOUR_SERPAPI_KEY_HERE":
         return {
             "query": query,
-            "message": f"search_failed: {e}",
+            "message": "missing_serpapi_key",
             "best": None,
             "results": [],
         }
 
-    all_hits: List[Dict] = []
-    for u in urls:
-        all_hits.extend(scrape_prices_from_url(u))
+    products = search_serpapi_google_shopping(query, country=country)
 
-    if not all_hits:
+    if not products:
         return {
             "query": query,
-            "message": "no_prices_found",
+            "message": "no_results",
+            "best": None,
+            "results": [],
+        }
+
+    # add numeric price field for sorting
+    for p in products:
+        p["price_value"] = parse_price_to_number(p["price_raw"])
+
+    # filter out zero prices just in case
+    products = [p for p in products if p["price_value"] > 0]
+
+    if not products:
+        return {
+            "query": query,
+            "message": "no_price_parsed",
             "best": None,
             "results": [],
         }
 
     # pick cheapest
-    best = min(all_hits, key=lambda x: x["price"])
+    best = min(products, key=lambda x: x["price_value"])
 
     return {
         "query": query,
         "message": "ok",
         "best": best,
-        "results": all_hits,
+        "results": products,
     }
