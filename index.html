@@ -22,7 +22,7 @@ async function send() {
     let msg = document.getElementById("msg").value;
     chat.innerHTML += `<div class="user">You: ${msg}</div>`;
 
-    let r = await fetch("https://YOUR_BACKEND_URL/search?query=" + encodeURIComponent(msg));
+    let r = await fetch("https://https://ai-price-finder.onrender.com/search?query=" + encodeURIComponent(msg));
     let data = await r.json();
 
     chat.innerHTML += `<div class="bot"><pre>${JSON.stringify(data.ai_choice, null, 2)}</pre></div>`;
