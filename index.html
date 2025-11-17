@@ -2,39 +2,215 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Petspace – AI Wholesale Price Finder</title>
+  <title>AI Global Pet Product Finder 🌍🐾</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root {
-      --ps-primary: #12b8a4;  /* teal */
-      --ps-primary-dark: #0f766e;
-      --ps-bg: #f5f7fb;
-      --ps-surface: #ffffff;
-      --ps-text: #0f172a;
-      --ps-muted: #6b7280;
-      --ps-border: #e5e7eb;
-      --ps-radius: 14px;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; }
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top left, #e0f7f3, #f5f7fb 45%, #f9fafb);
-      color: var(--ps-text);
-      min-height: 100vh;
-      padding: 24px;
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
     }
+    h1 {
+      margin: 0 0 16px;
+      font-size: 24px;
+    }
+    #chat {
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      height: 70vh;
+      padding: 16px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+    .user {
+      color: #1d4ed8;
+      margin: 8px 0 4px;
+      font-weight: 600;
+    }
+    .bot {
+      color: #166534;
+      margin: 0 0 12px;
+      white-space: pre-wrap;
+    }
+    .bot strong {
+      color: #14532d;
+    }
+    #inputBox {
+      display: flex;
+      gap: 8px;
+    }
+    #msg {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+    #msg:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px rgba(37,99,235,0.2);
+    }
+    button {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: none;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    ol {
+      padding-left: 18px;
+      margin: 6px 0 0;
+      font-size: 13px;
+    }
+    ol li {
+      margin-bottom: 4px;
+    }
+    a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .hint {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
 
-    .page {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: 24px;
-      align-items: stretch;
+<h1>AI Global Pet Product Finder 🌍🐾</h1>
+<div class="hint">
+  Try queries like <code>kong classic dog toy</code>, <code>dog food 2kg</code>, <code>canumi dog food</code>…
+</div>
+
+<div id="chat"></div>
+
+<div id="inputBox">
+  <input id="msg" placeholder="Search any pet product worldwide…" />
+  <button id="sendBtn" onclick="send()">Send</button>
+</div>
+
+<script>
+  const API_BASE = "https://ai-price-finder.onrender.com";
+
+  const chat = document.getElementById("chat");
+  const msgBox = document.getElementById("msg");
+  const sendBtn = document.getElementById("sendBtn");
+
+  function appendUser(text) {
+    chat.innerHTML += `<div class="user">You: ${text}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function appendBot(html) {
+    const div = document.createElement("div");
+    div.className = "bot";
+    div.innerHTML = html;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  async function send() {
+    const text = msgBox.value.trim();
+    if (!text) return;
+
+    appendUser(text);
+    msgBox.value = "";
+    msgBox.focus();
+
+    sendBtn.disabled = true;
+    appendBot("Searching…");
+
+    try {
+      const res = await fetch(
+        API_BASE + "/search?query=" + encodeURIComponent(text)
+      );
+
+      if (!res.ok) {
+        appendBot(`⚠️ Server error: ${res.status}`);
+        sendBtn.disabled = false;
+        return;
+      }
+
+      const data = await res.json();
+
+      // remove the temporary "Searching…" line (last .bot)
+      const bots = chat.querySelectorAll(".bot");
+      if (bots.length) {
+        bots[bots.length - 1].remove();
+      }
+
+      if (data.message !== "ok" || !data.best) {
+        appendBot(
+          `No prices found for that product.<br><small>Message from server: ${
+            data.message || "n/a"
+          }</small>`
+        );
+        sendBtn.disabled = false;
+        return;
+      }
+
+      const b = data.best;
+      const priceRaw =
+        b.price_raw || b.price || b.price_value || "price not provided";
+      const source = b.source || b.store || "unknown shop";
+      const link = b.link || b.product_link || "#";
+
+      const top = (data.results || []).slice(0, 5);
+      let listHtml = "<ol>";
+      for (const item of top) {
+        const pRaw =
+          item.price_raw || item.price || item.price_value || "n/a";
+        const src = item.source || item.store || "unknown";
+        const lnk = item.link || item.product_link || "#";
+        listHtml += `<li>${item.title || "Untitled"} — ${pRaw} (${src}) ${
+          lnk !== "#" ? `<a href="${lnk}" target="_blank">open</a>` : ""
+        }</li>`;
+      }
+      listHtml += "</ol>";
+
+      appendBot(`
+        ✅ <strong>Best price I found:</strong><br>
+        <strong>${b.title || "Untitled product"}</strong><br>
+        Price: ${priceRaw}<br>
+        Source: ${source}<br>
+        ${
+          link !== "#"
+            ? `<a href="${link}" target="_blank">Open product page</a><br><br>`
+            : "<br>"
+        }
+        <strong>Top results:</strong><br>
+        ${listHtml}
+      `);
+    } catch (err) {
+      appendBot(`❌ Error: ${err.message}`);
+    } finally {
+      sendBtn.disabled = false;
     }
+  }
+
+  // Allow Enter key to send
+  msgBox.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      send();
+    }
+  });
+</script>
+
+</body>
+</html>
