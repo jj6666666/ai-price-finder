@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import requests, re
+import requests
+import re
 from bs4 import BeautifulSoup
-from openai import OpenAI
-
-client = OpenAI(api_key="YOUR_OPENAI_KEY")
+from typing import List, Dict
 
 app = FastAPI()
 
+# Allow browser calls from anywhere (Netlify etc.)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,106 +16,77 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------------------------------
-# 1. GLOBAL PRODUCT SCRAPER (Shopify, WooCommerce, HTML)
-# -------------------------------------------------------
+# --------- helper functions ----------
 
-def extract_prices_from_url(url):
-    prices = []
-    try:
-        r = requests.get(url, timeout=8)
-        soup = BeautifulSoup(r.text, "html.parser")
-
-        # Shopify JSON
-        if "Product" in r.text:
-            json_links = re.findall(r"https://[^\"']+products[^\"']+\.js", r.text)
-            for link in json_links[:3]:
-                j = requests.get(link).json()
-                prices.append({
-                    "title": j.get("title"),
-                    "price": j.get("price"),
-                    "url": url
-                })
-
-        # WooCommerce (meta tags)
-        for meta in soup.find_all("meta"):
-            if meta.get("property") == "product:price:amount":
-                prices.append({
-                    "title": soup.title.text if soup.title else "Unknown",
-                    "price": meta.get("content"),
-                    "url": url
-                })
-
-        # Raw HTML fallback
-        raw_prices = re.findall(r"£\s?\d+\.?\d*", r.text)
-        for rp in raw_prices[:5]:
-            prices.append({
-                "title": soup.title.text if soup.title else "Unknown",
-                "price": rp.replace("£",""),
-                "url": url
-            })
-
-    except:
-        pass
-
-    return prices
-
-
-# -------------------------------------------------------
-# 2. GLOBAL SEARCH (Google Search → Real URLs → Scrape)
-# -------------------------------------------------------
-
-def google_search(query):
-    url = f"https://www.google.com/search?q={query}+buy+wholesale"
+def google_search(query: str) -> List[str]:
+    """Very simple Google search → list of external URLs."""
+    params = {"q": f"{query} pet product buy", "num": "5"}
     headers = {"User-Agent": "Mozilla/5.0"}
-    r = requests.get(url, headers=headers)
+    r = requests.get("https://www.google.com/search", params=params, headers=headers, timeout=8)
+
+    # crude URL extraction
     links = re.findall(r'https://[^\"<>\s]+', r.text)
-    clean = [l for l in links if ".jpg" not in l and ".png" not in l]
-    return clean[:8]
+    cleaned = []
+    for l in links:
+        if any(bad in l for bad in ["google.com", "webcache.googleusercontent.com", "policies.google.com"]):
+            continue
+        if any(ext in l for ext in [".jpg", ".jpeg", ".png", ".webp", ".svg"]):
+            continue
+        cleaned.append(l)
+    # just the first few
+    return cleaned[:5]
 
 
-# -------------------------------------------------------
-# 3. AI MATCHING (OpenAI)
-# -------------------------------------------------------
+def extract_prices_from_url(url: str) -> List[Dict]:
+    """Fetch a page, try to pull out title + any £xx.xx prices."""
+    results: List[Dict] = []
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=8)
+        soup = BeautifulSoup(r.text, "html.parser")
+        title = soup.title.text.strip() if soup.title else "Unknown product"
 
-def ai_pick_best_match(query, scraped):
-    prompt = f"""
-You are an AI price finder. Given user query: "{query}", choose the BEST product from below based purely on relevance and cheapest price.
+        # find patterns like £12.34 or £ 9.99
+        matches = re.findall(r"£\s?(\d+(?:\.\d{1,2})?)", r.text)
+        for m in matches:
+            try:
+                price_val = float(m)
+                results.append({
+                    "title": title,
+                    "price": price_val,
+                    "currency": "GBP",
+                    "url": url,
+                })
+            except ValueError:
+                continue
+    except Exception as e:
+        print("Error scraping", url, e)
 
-Products:
-{scraped}
+    return results
 
-Return ONLY as JSON: 
-{{
- "best_title": "...",
- "best_price": "...",
- "best_url": "..."
-}}
-"""
-    r = client.responses.create(
-        model="gpt-4.1-mini",
-        input=prompt,
-        max_output_tokens=200
-    )
-    return r.output[0].content[0].text
-
-
-
-# -------------------------------------------------------
-# 4. MAIN API ENDPOINT
-# -------------------------------------------------------
+# --------- main endpoint ----------
 
 @app.get("/search")
 def search(query: str):
     links = google_search(query)
-    results = []
-
+    all_results: List[Dict] = []
     for link in links:
-        prices = extract_prices_from_url(link)
-        results.extend(prices)
+        all_results.extend(extract_prices_from_url(link))
 
-    if not results:
-        return {"error": "No data found"}
+    if not all_results:
+        return {
+            "query": query,
+            "message": "No prices found",
+            "best": None,
+            "results": [],
+        }
 
-    ai_choice = ai_pick_best_match(query, results)
-    return {"ai_choice": ai_choice, "all": results}
+    # pick cheapest price
+    best = min(all_results, key=lambda x: x["price"])
+
+    return {
+        "query": query,
+        "message": "ok",
+        "best": best,
+        "results": all_results,
+    }
