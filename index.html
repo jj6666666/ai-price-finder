@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Global Pet Product Finder</title>
+<style>
+body { font-family: Arial; padding:40px; background:#f4f4f4; }
+#chat { border:1px solid #ddd; padding:20px; height:500px; overflow:auto; background:white; }
+.user { color:blue; margin:10px 0; }
+.bot { color:green; margin:10px 0; }
+</style>
+</head>
+<body>
+
+<h2>AI Global Pet Product Finder 🌍🐾</h2>
+<div id="chat"></div>
+<input id="msg" style="width:80%" placeholder="Search any pet product worldwide...">
+<button onclick="send()">Send</button>
+
+<script>
+async function send() {
+    let chat = document.getElementById("chat");
+    let msg = document.getElementById("msg").value;
+    chat.innerHTML += `<div class="user">You: ${msg}</div>`;
+
+    let r = await fetch("https://YOUR_BACKEND_URL/search?query=" + encodeURIComponent(msg));
+    let data = await r.json();
+
+    chat.innerHTML += `<div class="bot"><pre>${JSON.stringify(data.ai_choice, null, 2)}</pre></div>`;
+}
+</script>
+
+</body>
+</html>
