@@ -19,10 +19,8 @@ SERPAPI_KEY = os.getenv("SERPAPI_KEY")
 
 
 def parse_price_to_number(price_raw: str) -> float:
-    """
-    Convert price string like '£9.99', '$12.50', '9.99 GBP' into a float.
-    """
-    m = re.search(r"(\d+(?:\.\d{1,2})?)", price_raw)
+    """Convert price string like '£9.99', '$12.50', '9.99 GBP' into a float."""
+    m = re.search(r"(\d+(?:\.\d{1,2})?)", str(price_raw))
     if not m:
         return 0.0
     return float(m.group(1))
@@ -48,7 +46,7 @@ WHOLESALE_KEYWORDS = [
 def looks_wholesale(item: Dict[str, Any]) -> bool:
     """
     Heuristic: treat results that mention 'wholesale', 'bulk', 'case', etc.
-    in the title or source as 'wholesale-style' offers.
+    in the title or source/snippet as 'wholesale-style' offers.
     """
     text = (
         (item.get("title") or "")
@@ -60,13 +58,29 @@ def looks_wholesale(item: Dict[str, Any]) -> bool:
     return any(kw in text for kw in WHOLESALE_KEYWORDS)
 
 
+def call_serpapi(query: str, country: str = "uk") -> Dict[str, Any]:
+    """Single SerpApi call wrapper."""
+    params = {
+        "engine": "google_shopping",
+        "q": query,
+        "api_key": SERPAPI_KEY,
+        "gl": country,   # 'uk', 'us', etc.
+        "hl": "en",
+        "num": 30,
+    }
+    search = GoogleSearch(params)
+    return search.get_dict()
+
+
 @app.get("/search")
 def search(query: str, country: str = "uk") -> Dict[str, Any]:
     """
-    1) Call SerpApi Google Shopping
-       - we always append wholesale-related terms to the query
-    2) Filter results to those that *look* wholesale/bulk
-    3) Pick the cheapest
+    Behaviour:
+    1) Try a wholesale-biased query (add "wholesale bulk trade b2b case pack").
+       - If we find ANY wholesale-looking items → use those.
+    2) If we find NO wholesale-looking items at all →
+       - Call SerpApi again with the original query (no extra keywords)
+       - Return all results (retail included).
     """
 
     if not SERPAPI_KEY:
@@ -77,70 +91,87 @@ def search(query: str, country: str = "uk") -> Dict[str, Any]:
             "results": [],
         }
 
-    # Always bias the query towards wholesale-style results
+    # ---------- First call: wholesale-biased query ----------
     wholesale_query = f"{query} wholesale bulk trade b2b case pack"
+    result1 = call_serpapi(wholesale_query, country=country)
 
-    params = {
-        "engine": "google_shopping",
-        "q": wholesale_query,
-        "api_key": SERPAPI_KEY,
-        "gl": country,   # 'uk', 'us', etc.
-        "hl": "en",
-        "num": 30,
-    }
-
-    search = GoogleSearch(params)
-    result = search.get_dict()
-
-    if "error" in result:
+    # Handle possible error from SerpApi
+    if "error" in result1:
         return {
             "query": query,
-            "message": f"serpapi_error: {result['error']}",
+            "message": f"serpapi_error: {result1['error']}",
             "best": None,
             "results": [],
-            "raw": result,
+            "raw": result1,
         }
 
-    shopping: List[Dict[str, Any]] = result.get("shopping_results", []) or []
+    shopping1: List[Dict[str, Any]] = result1.get("shopping_results", []) or []
 
-    if not shopping:
+    # Attach price fields
+    for item in shopping1:
+        price_raw = item.get("price") or item.get("extracted_price") or ""
+        item["price_raw"] = str(price_raw)
+        item["price_value"] = parse_price_to_number(price_raw)
+
+    # Wholesale-looking subset from first call
+    wholesale_items = [i for i in shopping1 if looks_wholesale(i) and i["price_value"] > 0]
+
+    # If we have any wholesale-looking items, use ONLY those
+    if wholesale_items:
+        best = min(wholesale_items, key=lambda x: x["price_value"])
+        return {
+            "query": query,
+            "message": "ok",
+            "best": best,
+            "results": wholesale_items,
+            "mode": "wholesale_priority",
+        }
+
+    # ---------- Second call: original query (retail fallback) ----------
+    result2 = call_serpapi(query, country=country)
+
+    if "error" in result2:
+        return {
+            "query": query,
+            "message": f"serpapi_error: {result2['error']}",
+            "best": None,
+            "results": [],
+            "raw": result2,
+        }
+
+    shopping2: List[Dict[str, Any]] = result2.get("shopping_results", []) or []
+
+    if not shopping2:
         return {
             "query": query,
             "message": "no_shopping_results",
             "best": None,
             "results": [],
-            "raw": result,
+            "raw": result2,
         }
 
-    # Add price fields
-    for item in shopping:
+    for item in shopping2:
         price_raw = item.get("price") or item.get("extracted_price") or ""
         item["price_raw"] = str(price_raw)
-        item["price_value"] = parse_price_to_number(str(price_raw))
+        item["price_value"] = parse_price_to_number(price_raw)
 
-    # Prefer items that look wholesale-style
-    wholesale_items = [i for i in shopping if looks_wholesale(i)]
+    priced = [i for i in shopping2 if i["price_value"] > 0]
 
-    # If we found any "wholesale-looking" offers, only use those.
-    # Otherwise, fall back to all results so you still see something.
-    candidates = wholesale_items if wholesale_items else shopping
-
-    # Remove items without numeric price
-    candidates = [c for c in candidates if c["price_value"] > 0]
-
-    if not candidates:
+    if not priced:
         return {
             "query": query,
             "message": "no_price_parsed",
             "best": None,
-            "results": [],
+            "results": shopping2,
+            "mode": "retail_fallback",
         }
 
-    best = min(candidates, key=lambda x: x["price_value"])
+    best = min(priced, key=lambda x: x["price_value"])
 
     return {
         "query": query,
         "message": "ok",
         "best": best,
-        "results": candidates,
+        "results": priced,
+        "mode": "retail_fallback",
     }
