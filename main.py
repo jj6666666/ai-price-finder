@@ -43,10 +43,11 @@ WHOLESALE_KEYWORDS = [
     "x48",
 ]
 
+
 def looks_wholesale(item: Dict[str, Any]) -> bool:
     """
-    Heuristic: treat results that mention 'wholesale', 'bulk', 'case', etc.
-    in the title or source/snippet as 'wholesale-style' offers.
+    Treat results that mention 'wholesale', 'bulk', 'case', etc.
+    in the title/source/snippet as 'wholesale-style' offers.
     """
     text = (
         (item.get("title") or "")
@@ -59,12 +60,12 @@ def looks_wholesale(item: Dict[str, Any]) -> bool:
 
 
 def call_serpapi(query: str, country: str = "uk") -> Dict[str, Any]:
-    """Single SerpApi call wrapper."""
+    """Single SerpApi call wrapper for google_shopping."""
     params = {
         "engine": "google_shopping",
         "q": query,
         "api_key": SERPAPI_KEY,
-        "gl": country,   # 'uk', 'us', etc.
+        "gl": country,
         "hl": "en",
         "num": 30,
     }
@@ -72,15 +73,23 @@ def call_serpapi(query: str, country: str = "uk") -> Dict[str, Any]:
     return search.get_dict()
 
 
+def is_no_results_error(err: str) -> bool:
+    """True when SerpApi just says Google returned no results."""
+    if not err:
+        return False
+    return "hasn't returned any results for this query" in err.lower()
+
+
 @app.get("/search")
 def search(query: str, country: str = "uk") -> Dict[str, Any]:
     """
     Behaviour:
-    1) Try a wholesale-biased query (add "wholesale bulk trade b2b case pack").
+    1) Try a wholesale-biased query (add 'wholesale bulk trade b2b case pack').
        - If we find ANY wholesale-looking items → use those.
-    2) If we find NO wholesale-looking items at all →
-       - Call SerpApi again with the original query (no extra keywords)
-       - Return all results (retail included).
+       - If Google returns 'no results' for that query → treat as 0 items (not fatal).
+    2) If we find NO wholesale-looking items at all:
+       - Call SerpApi again with the original query (retail).
+       - Return all priced results.
     """
 
     if not SERPAPI_KEY:
@@ -94,29 +103,30 @@ def search(query: str, country: str = "uk") -> Dict[str, Any]:
     # ---------- First call: wholesale-biased query ----------
     wholesale_query = f"{query} wholesale bulk trade b2b case pack"
     result1 = call_serpapi(wholesale_query, country=country)
+    err1 = result1.get("error")
 
-    # Handle possible error from SerpApi
-    if "error" in result1:
+    # If it's a true error (invalid key, etc.), surface it.
+    if err1 and not is_no_results_error(err1):
         return {
             "query": query,
-            "message": f"serpapi_error: {result1['error']}",
+            "message": f"serpapi_error: {err1}",
             "best": None,
             "results": [],
             "raw": result1,
         }
 
+    # If it's "no results", just treat as 0 shopping results.
     shopping1: List[Dict[str, Any]] = result1.get("shopping_results", []) or []
 
-    # Attach price fields
     for item in shopping1:
         price_raw = item.get("price") or item.get("extracted_price") or ""
         item["price_raw"] = str(price_raw)
         item["price_value"] = parse_price_to_number(price_raw)
 
-    # Wholesale-looking subset from first call
-    wholesale_items = [i for i in shopping1 if looks_wholesale(i) and i["price_value"] > 0]
+    wholesale_items = [
+        i for i in shopping1 if looks_wholesale(i) and i["price_value"] > 0
+    ]
 
-    # If we have any wholesale-looking items, use ONLY those
     if wholesale_items:
         best = min(wholesale_items, key=lambda x: x["price_value"])
         return {
@@ -129,11 +139,12 @@ def search(query: str, country: str = "uk") -> Dict[str, Any]:
 
     # ---------- Second call: original query (retail fallback) ----------
     result2 = call_serpapi(query, country=country)
+    err2 = result2.get("error")
 
-    if "error" in result2:
+    if err2 and not is_no_results_error(err2):
         return {
             "query": query,
-            "message": f"serpapi_error: {result2['error']}",
+            "message": f"serpapi_error: {err2}",
             "best": None,
             "results": [],
             "raw": result2,
@@ -141,7 +152,7 @@ def search(query: str, country: str = "uk") -> Dict[str, Any]:
 
     shopping2: List[Dict[str, Any]] = result2.get("shopping_results", []) or []
 
-    if not shopping2:
+    if (not shopping2) and is_no_results_error(err2 or ""):
         return {
             "query": query,
             "message": "no_shopping_results",
