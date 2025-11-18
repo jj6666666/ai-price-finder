@@ -2,215 +2,551 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AI Global Pet Product Finder 🌍🐾</title>
+  <title>Petspace – AI Petsupplies Price Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    :root {
+      --ps-dark: #064e3b;      /* deep green */
+      --ps-main: #10b981;      /* Petspace-style mint green */
+      --ps-light: #ecfdf5;     /* very light mint */
+      --ps-accent: #f97316;    /* orange accent */
+      --ps-gray: #6b7280;
+      --ps-bg: #f3f4f6;
+      --ps-card: #ffffff;
+    }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      padding: 20px;
+      padding: 24px 16px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
-    }
-    h1 {
-      margin: 0 0 16px;
-      font-size: 24px;
-    }
-    #chat {
-      background: #ffffff;
-      border-radius: 8px;
-      border: 1px solid #e5e7eb;
-      height: 70vh;
-      padding: 16px;
-      overflow-y: auto;
-      margin-bottom: 12px;
-    }
-    .user {
-      color: #1d4ed8;
-      margin: 8px 0 4px;
-      font-weight: 600;
-    }
-    .bot {
-      color: #166534;
-      margin: 0 0 12px;
-      white-space: pre-wrap;
-    }
-    .bot strong {
-      color: #14532d;
-    }
-    #inputBox {
+      background: radial-gradient(circle at top left, #bbf7d0 0, #f9fafb 38%, #e5e7eb 100%);
+      color: #111827;
       display: flex;
+      justify-content: center;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 1040px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
       gap: 8px;
     }
-    #msg {
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--ps-main), var(--ps-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ecfdf5;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .brand-text-title {
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--ps-dark);
+    }
+
+    .brand-text-sub {
+      font-size: 12px;
+      color: var(--ps-gray);
+    }
+
+    .pill {
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(16,185,129,0.12);
+      color: var(--ps-dark);
+      border: 1px solid rgba(16,185,129,0.2);
+    }
+
+    .card {
+      background: var(--ps-card);
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border: 1px solid rgba(15,23,42,0.03);
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-row input {
       flex: 1;
+      min-width: 220px;
       padding: 10px 12px;
-      border-radius: 6px;
+      border-radius: 999px;
       border: 1px solid #d1d5db;
       font-size: 14px;
     }
-    #msg:focus {
+
+    .search-row input:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 1px rgba(37,99,235,0.2);
+      border-color: var(--ps-main);
+      box-shadow: 0 0 0 1px rgba(16,185,129,0.3);
     }
-    button {
-      padding: 10px 16px;
-      border-radius: 6px;
+
+    .search-row button {
+      padding: 10px 18px;
+      border-radius: 999px;
       border: none;
-      background: #2563eb;
-      color: #ffffff;
+      background: var(--ps-dark);
+      color: #ecfdf5;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
     }
-    button:disabled {
+
+    .search-row button:disabled {
       opacity: 0.6;
       cursor: default;
     }
-    ol {
-      padding-left: 18px;
-      margin: 6px 0 0;
-      font-size: 13px;
-    }
-    ol li {
-      margin-bottom: 4px;
-    }
-    a {
-      color: #2563eb;
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
+
     .hint {
       font-size: 12px;
-      color: #6b7280;
+      color: var(--ps-gray);
+    }
+
+    .hint code {
+      background: var(--ps-bg);
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 11px;
+    }
+
+    .results-wrapper {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 830px) {
+      .results-wrapper {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .chat-log {
+      border-radius: 12px;
+      background: var(--ps-light);
+      padding: 12px 14px;
+      font-size: 13px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .chat-entry-you {
+      color: var(--ps-dark);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .chat-entry-bot {
+      color: var(--ps-gray);
       margin-bottom: 8px;
+    }
+
+    .best-card {
+      border-radius: 12px;
+      border: 1px solid rgba(16,185,129,0.4);
+      background: linear-gradient(135deg, #ecfdf5, #ffffff);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .best-badge {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 11px;
+      background: var(--ps-accent);
+      color: #fff7ed;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .best-thumb {
+      width: 96px;
+      height: 96px;
+      border-radius: 12px;
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .best-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .best-main-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+      color: #022c22;
+    }
+
+    .best-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ps-dark);
+      margin-bottom: 2px;
+    }
+
+    .best-meta {
+      font-size: 12px;
+      color: var(--ps-gray);
+      margin-bottom: 6px;
+    }
+
+    .best-actions a {
+      font-size: 13px;
+      color: #ffffff;
+      background: var(--ps-main);
+      padding: 6px 10px;
+      border-radius: 999px;
+      text-decoration: none;
+      margin-right: 6px;
+    }
+
+    .best-actions a.secondary {
+      background: transparent;
+      border: 1px solid rgba(15,23,42,0.15);
+      color: #111827;
+    }
+
+    .chip-rating {
+      font-size: 11px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(234,179,8,0.12);
+      color: #854d0e;
+      margin-right: 4px;
+    }
+
+    .chip-source {
+      font-size: 11px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.06);
+      color: #0f172a;
+    }
+
+    .other-block {
+      border-radius: 12px;
+      border: 1px dashed rgba(148,163,184,0.7);
+      padding: 10px 12px;
+      background: #f9fafb;
+    }
+
+    .other-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4b5563;
+      margin-bottom: 8px;
+    }
+
+    .other-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .other-item {
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .other-item-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .other-item-main span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .other-item-price {
+      font-weight: 600;
+      color: var(--ps-dark);
+      white-space: nowrap;
+      margin-left: 4px;
+    }
+
+    .other-item a {
+      font-size: 11px;
+      color: var(--ps-main);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .other-item a:hover {
+      text-decoration: underline;
+    }
+
+    small.muted {
+      font-size: 11px;
+      color: var(--ps-gray);
     }
   </style>
 </head>
 <body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div>
+          <div class="brand-text-title">Petspace Price Finder</div>
+          <div class="brand-text-sub">AI assistant for wholesale pet products</div>
+        </div>
+      </div>
+      <div class="pill">Internal beta · Not for external use</div>
+    </header>
 
-<h1>AI Global Pet Product Finder 🌍🐾</h1>
-<div class="hint">
-  Try queries like <code>kong classic dog toy</code>, <code>dog food 2kg</code>, <code>canumi dog food</code>…
-</div>
+    <div class="card">
+      <div class="search-row">
+        <input id="msg" placeholder='Search… e.g. "kong classic dog toy medium"' />
+        <button id="sendBtn" onclick="send()">
+          <span>Search</span> <span>🔎</span>
+        </button>
+      </div>
+      <div class="hint">
+        Try queries like <code>kong classic dog toy</code>, <code>natural dog treats 1kg</code>, <code>canumi dog food</code>.
+      </div>
 
-<div id="chat"></div>
+      <div class="results-wrapper">
+        <div>
+          <div id="best-container">
+            <!-- Best result card goes here -->
+            <small class="muted">No search yet. Type a product to see the best wholesale option I can find.</small>
+          </div>
+        </div>
 
-<div id="inputBox">
-  <input id="msg" placeholder="Search any pet product worldwide…" />
-  <button id="sendBtn" onclick="send()">Send</button>
-</div>
+        <div>
+          <div class="chat-log" id="chat">
+            <!-- Query history -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<script>
-  const API_BASE = "https://ai-price-finder.onrender.com";
+  <script>
+    const API_BASE = "https://ai-price-finder.onrender.com";
 
-  const chat = document.getElementById("chat");
-  const msgBox = document.getElementById("msg");
-  const sendBtn = document.getElementById("sendBtn");
+    const chat = document.getElementById("chat");
+    const msgBox = document.getElementById("msg");
+    const sendBtn = document.getElementById("sendBtn");
+    const bestContainer = document.getElementById("best-container");
 
-  function appendUser(text) {
-    chat.innerHTML += `<div class="user">You: ${text}</div>`;
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function appendBot(html) {
-    const div = document.createElement("div");
-    div.className = "bot";
-    div.innerHTML = html;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  async function send() {
-    const text = msgBox.value.trim();
-    if (!text) return;
-
-    appendUser(text);
-    msgBox.value = "";
-    msgBox.focus();
-
-    sendBtn.disabled = true;
-    appendBot("Searching…");
-
-    try {
-      const res = await fetch(
-        API_BASE + "/search?query=" + encodeURIComponent(text)
-      );
-
-      if (!res.ok) {
-        appendBot(`⚠️ Server error: ${res.status}`);
-        sendBtn.disabled = false;
-        return;
+    function addChatEntry(role, text) {
+      const div = document.createElement("div");
+      if (role === "you") {
+        div.className = "chat-entry-you";
+        div.textContent = "You: " + text;
+      } else {
+        div.className = "chat-entry-bot";
+        div.textContent = text;
       }
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-      const data = await res.json();
+    function formatPriceRaw(item) {
+      return item.price_raw || item.price || (item.price_value ? "£" + item.price_value : "n/a");
+    }
 
-      // remove the temporary "Searching…" line (last .bot)
-      const bots = chat.querySelectorAll(".bot");
-      if (bots.length) {
-        bots[bots.length - 1].remove();
+    function safeField(item, keys, fallback = "") {
+      for (const k of keys) {
+        if (item && item[k] != null && item[k] !== "") return item[k];
       }
+      return fallback;
+    }
 
+    function renderBestAndOthers(data) {
       if (data.message !== "ok" || !data.best) {
-        appendBot(
-          `No prices found for that product.<br><small>Message from server: ${
-            data.message || "n/a"
-          }</small>`
-        );
-        sendBtn.disabled = false;
+        bestContainer.innerHTML = `
+          <small class="muted">
+            No prices found for that product.<br>
+            Message from server: ${data.message || "n/a"}
+          </small>
+        `;
         return;
       }
 
       const b = data.best;
-      const priceRaw =
-        b.price_raw || b.price || b.price_value || "price not provided";
-      const source = b.source || b.store || "unknown shop";
-      const link = b.link || b.product_link || "#";
+      const thumb = safeField(b, ["thumbnail", "image"], "");
+      const title = safeField(b, ["title"], "Untitled product");
+      const price = formatPriceRaw(b);
+      const source = safeField(b, ["source", "store"], "Unknown shop");
+      const link = safeField(b, ["link", "product_link"], "#");
+      const rating = safeField(b, ["rating"], null);
+      const reviews = safeField(b, ["reviews"], null);
+      const delivery = safeField(b, ["delivery", "shipping"], "");
 
-      const top = (data.results || []).slice(0, 5);
-      let listHtml = "<ol>";
-      for (const item of top) {
-        const pRaw =
-          item.price_raw || item.price || item.price_value || "n/a";
-        const src = item.source || item.store || "unknown";
-        const lnk = item.link || item.product_link || "#";
-        listHtml += `<li>${item.title || "Untitled"} — ${pRaw} (${src}) ${
-          lnk !== "#" ? `<a href="${lnk}" target="_blank">open</a>` : ""
-        }</li>`;
+      const top = (data.results || []).slice(0, 6);
+
+      let ratingHtml = "";
+      if (rating || reviews) {
+        ratingHtml += `<span class="chip-rating">⭐ ${rating || "?"} (${reviews || "no"} reviews)</span>`;
       }
-      listHtml += "</ol>";
+      const sourceHtml = `<span class="chip-source">${source}</span>`;
 
-      appendBot(`
-        ✅ <strong>Best price I found:</strong><br>
-        <strong>${b.title || "Untitled product"}</strong><br>
-        Price: ${priceRaw}<br>
-        Source: ${source}<br>
-        ${
-          link !== "#"
-            ? `<a href="${link}" target="_blank">Open product page</a><br><br>`
-            : "<br>"
+      let otherHtml = "";
+      if (top.length > 1) {
+        otherHtml += `<div class="other-block">
+          <div class="other-title">Other options (top ${top.length})</div>
+          <div class="other-list">
+        `;
+        top.forEach((item, idx) => {
+          if (idx === 0) return; // skip best, already shown
+          const t = safeField(item, ["title"], "Untitled");
+          const p = formatPriceRaw(item);
+          const s = safeField(item, ["source", "store"], "Unknown");
+          const l = safeField(item, ["link", "product_link"], "#");
+          otherHtml += `
+            <div class="other-item">
+              <div class="other-item-main">
+                <span>${t}</span>
+                <small class="muted">${s}</small>
+              </div>
+              <div class="other-item-price">${p}</div>
+              ${
+                l !== "#"
+                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer">open</a>`
+                  : ""
+              }
+            </div>
+          `;
+        });
+        otherHtml += `</div></div>`;
+      }
+
+      bestContainer.innerHTML = `
+        <div class="best-card">
+          <div class="best-badge">Best match</div>
+          <div class="best-thumb">
+            ${
+              thumb
+                ? `<img src="${thumb}" alt="Product image" />`
+                : `<span>🦴🐾</span>`
+            }
+          </div>
+          <div>
+            <div class="best-main-title">${title}</div>
+            <div class="best-price">${price}</div>
+            <div class="best-meta">
+              ${sourceHtml}
+              ${ratingHtml}
+              ${delivery ? `<br><small class="muted">${delivery}</small>` : ""}
+            </div>
+            <div class="best-actions">
+              ${
+                link !== "#"
+                  ? `<a href="${link}" target="_blank" rel="noopener noreferrer">Open product page</a>`
+                  : ""
+              }
+              <a href="#" class="secondary" onclick="event.preventDefault(); msgBox.focus();">Refine search</a>
+            </div>
+          </div>
+        </div>
+        ${otherHtml}
+      `;
+    }
+
+    async function send() {
+      const text = msgBox.value.trim();
+      if (!text) return;
+
+      addChatEntry("you", text);
+      msgBox.value = "";
+      msgBox.focus();
+
+      sendBtn.disabled = true;
+      renderBestAndOthers({ message: "loading" });
+      bestContainer.innerHTML = `<small class="muted">Searching for “${text}”…</small>`;
+
+      try {
+        const res = await fetch(
+          API_BASE + "/search?query=" + encodeURIComponent(text)
+        );
+
+        if (!res.ok) {
+          addChatEntry("bot", `Server error: ${res.status}`);
+          bestContainer.innerHTML = `<small class="muted">Server error: ${res.status}</small>`;
+          sendBtn.disabled = false;
+          return;
         }
-        <strong>Top results:</strong><br>
-        ${listHtml}
-      `);
-    } catch (err) {
-      appendBot(`❌ Error: ${err.message}`);
-    } finally {
-      sendBtn.disabled = false;
-    }
-  }
 
-  // Allow Enter key to send
-  msgBox.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      send();
+        const data = await res.json();
+        addChatEntry(
+          "bot",
+          data.message === "ok"
+            ? "Found " + (data.results ? data.results.length : 0) + " option(s)."
+            : "Search message: " + (data.message || "n/a")
+        );
+        renderBestAndOthers(data);
+      } catch (err) {
+        addChatEntry("bot", "Error: " + err.message);
+        bestContainer.innerHTML = `<small class="muted">Error: ${err.message}</small>`;
+      } finally {
+        sendBtn.disabled = false;
+      }
     }
-  });
-</script>
 
+    msgBox.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        send();
+      }
+    });
+  </script>
 </body>
 </html>
