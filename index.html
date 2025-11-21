@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Petspace – AI Petsupplies Price Finder</title>
+  <title>Petspace – AI Wholesale Price Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --ps-dark: #064e3b;      /* deep green */
-      --ps-main: #10b981;      /* Petspace-style mint green */
-      --ps-light: #ecfdf5;     /* very light mint */
-      --ps-accent: #f97316;    /* orange accent */
+      --ps-dark: #064e3b;
+      --ps-main: #10b981;
+      --ps-light: #ecfdf5;
+      --ps-accent: #f97316;
       --ps-gray: #6b7280;
       --ps-bg: #f3f4f6;
       --ps-card: #ffffff;
@@ -161,7 +161,7 @@
       background: var(--ps-light);
       padding: 12px 14px;
       font-size: 13px;
-      max-height: 220px;
+      max-height: 260px;
       overflow-y: auto;
     }
 
@@ -238,17 +238,26 @@
       margin-bottom: 6px;
     }
 
-    .best-actions a {
+    .best-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn-pill {
       font-size: 13px;
       color: #ffffff;
       background: var(--ps-main);
       padding: 6px 10px;
       border-radius: 999px;
       text-decoration: none;
-      margin-right: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .best-actions a.secondary {
+    .btn-secondary {
       background: transparent;
       border: 1px solid rgba(15,23,42,0.15);
       color: #111827;
@@ -269,31 +278,46 @@
       border-radius: 999px;
       background: rgba(15,23,42,0.06);
       color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    .other-block {
+    .chip-source span.icon {
+      font-size: 13px;
+    }
+
+    .other-block,
+    .insights-block,
+    .history-block,
+    .suggestions-block {
       border-radius: 12px;
       border: 1px dashed rgba(148,163,184,0.7);
       padding: 10px 12px;
       background: #f9fafb;
+      margin-top: 10px;
     }
 
-    .other-title {
+    .block-title {
       font-size: 12px;
       font-weight: 600;
       color: #4b5563;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
-    .other-list {
+    .other-list,
+    .suggestions-list,
+    .history-list {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 180px;
+      max-height: 150px;
       overflow-y: auto;
     }
 
-    .other-item {
+    .other-item,
+    .suggestion-item,
+    .history-item {
       font-size: 12px;
       display: flex;
       justify-content: space-between;
@@ -301,33 +325,40 @@
       align-items: center;
     }
 
-    .other-item-main {
+    .other-item-main,
+    .suggestion-main,
+    .history-main {
       flex: 1;
       min-width: 0;
     }
 
-    .other-item-main span {
+    .other-item-main span,
+    .suggestion-main span,
+    .history-main span {
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .other-item-price {
+    .price-text {
       font-weight: 600;
       color: var(--ps-dark);
       white-space: nowrap;
       margin-left: 4px;
     }
 
-    .other-item a {
+    .where-link {
       font-size: 11px;
       color: var(--ps-main);
       white-space: nowrap;
       text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
     }
 
-    .other-item a:hover {
+    .where-link:hover {
       text-decoration: underline;
     }
 
@@ -344,7 +375,7 @@
         <div class="brand-mark">P</div>
         <div>
           <div class="brand-text-title">Petspace Price Finder</div>
-          <div class="brand-text-sub">AI assistant for wholesale pet products</div>
+          <div class="brand-text-sub">AI assistant for global pet-product pricing</div>
         </div>
       </div>
       <div class="pill">Internal beta · Not for external use</div>
@@ -358,14 +389,14 @@
         </button>
       </div>
       <div class="hint">
-        Try queries like <code>kong classic dog toy</code>, <code>natural dog treats 1kg</code>, <code>canumi dog food</code>.
+        Try queries like <code>kong classic dog toy</code>,
+        <code>natural dog treats 1kg</code>, <code>canumi dog food</code>.
       </div>
 
       <div class="results-wrapper">
         <div>
           <div id="best-container">
-            <!-- Best result card goes here -->
-            <small class="muted">No search yet. Type a product to see the best wholesale option I can find.</small>
+            <small class="muted">No search yet. Type a product to see the best option I can find.</small>
           </div>
         </div>
 
@@ -400,7 +431,11 @@
     }
 
     function formatPriceRaw(item) {
-      return item.price_raw || item.price || (item.price_value ? "£" + item.price_value : "n/a");
+      if (!item) return "n/a";
+      if (item.price_raw) return item.price_raw;
+      if (item.price) return item.price;
+      if (item.price_value) return "£" + item.price_value;
+      return "n/a";
     }
 
     function safeField(item, keys, fallback = "") {
@@ -410,7 +445,59 @@
       return fallback;
     }
 
-    function renderBestAndOthers(data) {
+    function getStoreIconAndName(source, link) {
+      let host = "";
+      try {
+        if (link) {
+          host = new URL(link).hostname.toLowerCase();
+        }
+      } catch (e) {}
+
+      const text = (source || "") + " " + host;
+      const lower = text.toLowerCase();
+
+      if (lower.includes("amazon")) return { icon: "🅰️", name: "Amazon" };
+      if (lower.includes("ebay")) return { icon: "🛒", name: "eBay" };
+      if (lower.includes("zooplus")) return { icon: "🐾", name: "Zooplus" };
+      if (lower.includes("petsathome") || lower.includes("pets at home"))
+        return { icon: "🏬", name: "Pets at Home" };
+      if (lower.includes("chewy")) return { icon: "🦴", name: "Chewy" };
+      if (lower.includes("alibaba") || lower.includes("aliexpress"))
+        return { icon: "🌏", name: "Alibaba" };
+
+      return { icon: "🌐", name: source || host || "Store" };
+    }
+
+    function savePriceHistory(query, best) {
+      try {
+        const key = "ps_price_history";
+        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+        const record = {
+          ts: Date.now(),
+          query,
+          title: safeField(best, ["title"], ""),
+          price: best.price_value || null,
+          price_raw: formatPriceRaw(best),
+          source: safeField(best, ["source", "store"], ""),
+        };
+        existing.unshift(record);
+        const trimmed = existing.slice(0, 20);
+        localStorage.setItem(key, JSON.stringify(trimmed));
+        return trimmed;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function getPriceHistory() {
+      try {
+        return JSON.parse(localStorage.getItem("ps_price_history") || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function renderBestAndOthers(data, originalQuery) {
       if (data.message !== "ok" || !data.best) {
         bestContainer.innerHTML = `
           <small class="muted">
@@ -430,37 +517,100 @@
       const rating = safeField(b, ["rating"], null);
       const reviews = safeField(b, ["reviews"], null);
       const delivery = safeField(b, ["delivery", "shipping"], "");
+      const mode = data.mode || "standard";
 
-      const top = (data.results || []).slice(0, 6);
+      const { icon: bestIcon, name: bestStoreName } = getStoreIconAndName(
+        source,
+        link
+      );
 
-      let ratingHtml = "";
-      if (rating || reviews) {
-        ratingHtml += `<span class="chip-rating">⭐ ${rating || "?"} (${reviews || "no"} reviews)</span>`;
+      const top = (data.results || []).slice(0, 8);
+
+      // ---------- Suggestions (AI-ish) ----------
+      const suggestions = [];
+      for (const item of top) {
+        if (item === b) continue;
+        const pvBest = b.price_value || parseFloat(b.price_value || 0);
+        const pvItem = item.price_value || parseFloat(item.price_value || 0);
+        if (!pvItem || pvItem <= 0) continue;
+
+        // Cheaper alternative or same price from different store
+        if (pvItem < pvBest * 0.98 || safeField(item, ["source"], "") !== source) {
+          suggestions.push(item);
+        }
       }
-      const sourceHtml = `<span class="chip-source">${source}</span>`;
+      const suggestionSlice = suggestions.slice(0, 3);
 
+      // ---------- Brand insights ----------
+      // Rough brand guess: first word of best title
+      const brandGuess = title.split(" ")[0] || "";
+      const brandMatches = top.filter((item) =>
+        (safeField(item, ["title"], "") + safeField(item, ["brand"], ""))
+          .toLowerCase()
+          .includes(brandGuess.toLowerCase())
+      );
+      let brandHtml = "";
+      if (brandMatches.length > 1 && brandGuess.length > 2) {
+        const prices = brandMatches
+          .map((i) => i.price_value || parseFloat(i.price_value || 0))
+          .filter((p) => p && p > 0);
+        if (prices.length) {
+          const min = Math.min(...prices);
+          const max = Math.max(...prices);
+          const avg =
+            prices.reduce((a, b1) => a + b1, 0) / (prices.length || 1);
+
+          // cheapest store for brand
+          let cheapestItem = brandMatches[0];
+          for (const it of brandMatches) {
+            const v = it.price_value || parseFloat(it.price_value || 0);
+            if (!v) continue;
+            if (
+              !cheapestItem.price_value ||
+              v < (cheapestItem.price_value || parseFloat(cheapestItem.price_value || 0))
+            ) {
+              cheapestItem = it;
+            }
+          }
+          const cheapestSource = safeField(cheapestItem, ["source", "store"], "");
+          brandHtml = `
+            <div class="insights-block">
+              <div class="block-title">Brand insights · ${brandGuess}</div>
+              <div style="font-size:12px;">
+                Offers analysed: <strong>${brandMatches.length}</strong><br>
+                Price range: <strong>£${min.toFixed(2)}</strong> – <strong>£${max.toFixed(2)}</strong><br>
+                Average price: <strong>£${avg.toFixed(2)}</strong><br>
+                Cheapest store for this brand: <strong>${cheapestSource || "n/a"}</strong>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // ---------- Other options ----------
       let otherHtml = "";
       if (top.length > 1) {
         otherHtml += `<div class="other-block">
-          <div class="other-title">Other options (top ${top.length})</div>
+          <div class="block-title">Other options (top ${top.length})</div>
           <div class="other-list">
         `;
-        top.forEach((item, idx) => {
-          if (idx === 0) return; // skip best, already shown
+        top.forEach((item) => {
+          if (item === b) return;
           const t = safeField(item, ["title"], "Untitled");
           const p = formatPriceRaw(item);
           const s = safeField(item, ["source", "store"], "Unknown");
           const l = safeField(item, ["link", "product_link"], "#");
+          const { icon, name } = getStoreIconAndName(s, l);
           otherHtml += `
             <div class="other-item">
               <div class="other-item-main">
                 <span>${t}</span>
                 <small class="muted">${s}</small>
               </div>
-              <div class="other-item-price">${p}</div>
+              <div class="price-text">${p}</div>
               ${
                 l !== "#"
-                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer">open</a>`
+                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer" class="where-link"><span>${icon}</span><span>${name}</span></a>`
                   : ""
               }
             </div>
@@ -468,6 +618,71 @@
         });
         otherHtml += `</div></div>`;
       }
+
+      // ---------- Suggestions HTML ----------
+      let suggestionsHtml = "";
+      if (suggestionSlice.length) {
+        suggestionsHtml += `<div class="suggestions-block">
+          <div class="block-title">AI suggestions (alternatives)</div>
+          <div class="suggestions-list">
+        `;
+        suggestionSlice.forEach((item) => {
+          const t = safeField(item, ["title"], "Untitled");
+          const p = formatPriceRaw(item);
+          const s = safeField(item, ["source", "store"], "Unknown");
+          const l = safeField(item, ["link", "product_link"], "#");
+          const { icon, name } = getStoreIconAndName(s, l);
+          suggestionsHtml += `
+            <div class="suggestion-item">
+              <div class="suggestion-main">
+                <span>${t}</span>
+                <small class="muted">${s}</small>
+              </div>
+              <div class="price-text">${p}</div>
+              ${
+                l !== "#"
+                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer" class="where-link"><span>${icon}</span><span>${name}</span></a>`
+                  : ""
+              }
+            </div>
+          `;
+        });
+        suggestionsHtml += `</div></div>`;
+      }
+
+      // ---------- Price history (from localStorage) ----------
+      const history = savePriceHistory(originalQuery, b);
+      let historyHtml = "";
+      if (history && history.length) {
+        historyHtml += `<div class="history-block">
+          <div class="block-title">Recent price checks (this browser)</div>
+          <div class="history-list">
+        `;
+        history.slice(0, 5).forEach((h) => {
+          const date = new Date(h.ts);
+          const label = date.toLocaleDateString("en-GB", {
+            month: "short",
+            day: "numeric",
+          });
+          historyHtml += `
+            <div class="history-item">
+              <div class="history-main">
+                <span>${h.query || ""}</span>
+                <small class="muted">${label} · ${h.source || "Unknown"}</small>
+              </div>
+              <div class="price-text">${h.price_raw || ""}</div>
+            </div>
+          `;
+        });
+        historyHtml += `</div></div>`;
+      }
+
+      const modeLabel =
+        mode === "wholesale_priority"
+          ? "Wholesale-focused"
+          : mode === "retail_fallback"
+          ? "Retail fallback (no wholesale offers found)"
+          : "Standard";
 
       bestContainer.innerHTML = `
         <div class="best-card">
@@ -483,21 +698,38 @@
             <div class="best-main-title">${title}</div>
             <div class="best-price">${price}</div>
             <div class="best-meta">
-              ${sourceHtml}
-              ${ratingHtml}
-              ${delivery ? `<br><small class="muted">${delivery}</small>` : ""}
+              <span class="chip-source">
+                <span class="icon">${bestIcon}</span>
+                <span>${bestStoreName}</span>
+              </span>
+              ${
+                rating || reviews
+                  ? `<span class="chip-rating">⭐ ${rating || "?"}${
+                      reviews ? " (" + reviews + " reviews)" : ""
+                    }</span>`
+                  : ""
+              }
+              ${
+                delivery
+                  ? `<br><small class="muted">${delivery}</small>`
+                  : ""
+              }
+              <br><small class="muted">Mode: ${modeLabel}</small>
             </div>
             <div class="best-actions">
               ${
                 link !== "#"
-                  ? `<a href="${link}" target="_blank" rel="noopener noreferrer">Open product page</a>`
+                  ? `<a href="${link}" target="_blank" rel="noopener noreferrer" class="btn-pill"><span>${bestIcon}</span><span>Open product page</span></a>`
                   : ""
               }
-              <a href="#" class="secondary" onclick="event.preventDefault(); msgBox.focus();">Refine search</a>
+              <a href="#" class="btn-pill btn-secondary" onclick="event.preventDefault(); msgBox.focus();">Refine search</a>
             </div>
           </div>
         </div>
+        ${suggestionsHtml}
         ${otherHtml}
+        ${brandHtml}
+        ${historyHtml}
       `;
     }
 
@@ -510,7 +742,6 @@
       msgBox.focus();
 
       sendBtn.disabled = true;
-      renderBestAndOthers({ message: "loading" });
       bestContainer.innerHTML = `<small class="muted">Searching for “${text}”…</small>`;
 
       try {
@@ -532,7 +763,7 @@
             ? "Found " + (data.results ? data.results.length : 0) + " option(s)."
             : "Search message: " + (data.message || "n/a")
         );
-        renderBestAndOthers(data);
+        renderBestAndOthers(data, text);
       } catch (err) {
         addChatEntry("bot", "Error: " + err.message);
         bestContainer.innerHTML = `<small class="muted">Error: ${err.message}</small>`;
@@ -547,6 +778,37 @@
         send();
       }
     });
+
+    // On load, show last few history items (if any)
+    (function initHistoryOnLoad() {
+      const history = getPriceHistory();
+      if (!history.length) return;
+      bestContainer.innerHTML = `<div class="history-block">
+        <div class="block-title">Recent price checks (this browser)</div>
+        <div class="history-list">
+          ${history
+            .slice(0, 5)
+            .map((h) => {
+              const d = new Date(h.ts);
+              const label = d.toLocaleDateString("en-GB", {
+                month: "short",
+                day: "numeric",
+              });
+              return `
+                <div class="history-item">
+                  <div class="history-main">
+                    <span>${h.query || ""}</span>
+                    <small class="muted">${label} · ${h.source || "Unknown"}</small>
+                  </div>
+                  <div class="price-text">${h.price_raw || ""}</div>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+        <small class="muted">Search again to update your history.</small>
+      </div>`;
+    })();
   </script>
 </body>
 </html>
