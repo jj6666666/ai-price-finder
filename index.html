@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Petspace – AI Wholesale Price Finder</title>
+  <title>Petspace – AI Price Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -29,7 +29,7 @@
 
     .shell {
       width: 100%;
-      max-width: 1040px;
+      max-width: 1100px;
     }
 
     header {
@@ -81,7 +81,7 @@
     .card {
       background: var(--ps-card);
       border-radius: 16px;
-      padding: 18px 18px 16px;
+      padding: 18px;
       box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
       display: flex;
       flex-direction: column;
@@ -90,15 +90,19 @@
     }
 
     .search-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) 150px 110px;
       gap: 10px;
-      flex-wrap: wrap;
       align-items: center;
     }
 
+    @media (max-width: 800px) {
+      .search-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
     .search-row input {
-      flex: 1;
-      min-width: 220px;
       padding: 10px 12px;
       border-radius: 999px;
       border: 1px solid #d1d5db;
@@ -109,6 +113,14 @@
       outline: none;
       border-color: var(--ps-main);
       box-shadow: 0 0 0 1px rgba(16,185,129,0.3);
+    }
+
+    .search-row select {
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      background: #ffffff;
     }
 
     .search-row button {
@@ -124,6 +136,7 @@
       align-items: center;
       gap: 6px;
       white-space: nowrap;
+      justify-content: center;
     }
 
     .search-row button:disabled {
@@ -143,37 +156,17 @@
       font-size: 11px;
     }
 
-    .results-wrapper {
+    .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
       gap: 16px;
       align-items: flex-start;
     }
 
-    @media (max-width: 830px) {
-      .results-wrapper {
+    @media (max-width: 900px) {
+      .layout {
         grid-template-columns: minmax(0, 1fr);
       }
-    }
-
-    .chat-log {
-      border-radius: 12px;
-      background: var(--ps-light);
-      padding: 12px 14px;
-      font-size: 13px;
-      max-height: 260px;
-      overflow-y: auto;
-    }
-
-    .chat-entry-you {
-      color: var(--ps-dark);
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .chat-entry-bot {
-      color: var(--ps-gray);
-      margin-bottom: 8px;
     }
 
     .best-card {
@@ -186,7 +179,6 @@
       gap: 10px;
       align-items: center;
       position: relative;
-      overflow: hidden;
     }
 
     .best-badge {
@@ -238,11 +230,21 @@
       margin-bottom: 6px;
     }
 
+    .chip-source {
+      font-size: 11px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.06);
+      color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .best-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: 4px;
     }
 
     .btn-pill {
@@ -263,34 +265,9 @@
       color: #111827;
     }
 
-    .chip-rating {
-      font-size: 11px;
-      padding: 4px 7px;
-      border-radius: 999px;
-      background: rgba(234,179,8,0.12);
-      color: #854d0e;
-      margin-right: 4px;
-    }
-
-    .chip-source {
-      font-size: 11px;
-      padding: 4px 7px;
-      border-radius: 999px;
-      background: rgba(15,23,42,0.06);
-      color: #0f172a;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .chip-source span.icon {
-      font-size: 13px;
-    }
-
     .other-block,
-    .insights-block,
-    .history-block,
-    .suggestions-block {
+    .margin-block,
+    .history-block {
       border-radius: 12px;
       border: 1px dashed rgba(148,163,184,0.7);
       padding: 10px 12px;
@@ -306,7 +283,6 @@
     }
 
     .other-list,
-    .suggestions-list,
     .history-list {
       display: flex;
       flex-direction: column;
@@ -316,7 +292,6 @@
     }
 
     .other-item,
-    .suggestion-item,
     .history-item {
       font-size: 12px;
       display: flex;
@@ -325,15 +300,13 @@
       align-items: center;
     }
 
-    .other-item-main,
-    .suggestion-main,
+    .other-main,
     .history-main {
       flex: 1;
       min-width: 0;
     }
 
-    .other-item-main span,
-    .suggestion-main span,
+    .other-main span,
     .history-main span {
       display: block;
       overflow: hidden;
@@ -362,6 +335,54 @@
       text-decoration: underline;
     }
 
+    .chat-log {
+      border-radius: 12px;
+      background: var(--ps-light);
+      padding: 12px 14px;
+      font-size: 13px;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+
+    .chat-entry-you {
+      color: var(--ps-dark);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .chat-entry-bot {
+      color: var(--ps-gray);
+      margin-bottom: 8px;
+    }
+
+    .margin-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
+
+    .margin-grid label {
+      font-size: 11px;
+      color: var(--ps-gray);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .margin-grid input {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      font-size: 13px;
+    }
+
+    .margin-metrics {
+      font-size: 12px;
+    }
+
     small.muted {
       font-size: 11px;
       color: var(--ps-gray);
@@ -375,7 +396,7 @@
         <div class="brand-mark">P</div>
         <div>
           <div class="brand-text-title">Petspace Price Finder</div>
-          <div class="brand-text-sub">AI assistant for global pet-product pricing</div>
+          <div class="brand-text-sub">AI assistant for wholesale & retail benchmarking</div>
         </div>
       </div>
       <div class="pill">Internal beta · Not for external use</div>
@@ -384,25 +405,29 @@
     <div class="card">
       <div class="search-row">
         <input id="msg" placeholder='Search… e.g. "kong classic dog toy medium"' />
+        <select id="country">
+          <option value="uk">🇬🇧 UK</option>
+          <option value="us">🇺🇸 US</option>
+          <option value="eu">🇪🇺 EU (DE proxy)</option>
+          <option value="au">🇦🇺 AU</option>
+        </select>
         <button id="sendBtn" onclick="send()">
           <span>Search</span> <span>🔎</span>
         </button>
       </div>
       <div class="hint">
-        Try queries like <code>kong classic dog toy</code>,
-        <code>natural dog treats 1kg</code>, <code>canumi dog food</code>.
+        Multi-country comparison · Try <code>kong classic dog toy</code>, <code>canumi dog food</code>, <code>grain free kibble 10kg</code>.
       </div>
 
-      <div class="results-wrapper">
-        <div>
-          <div id="best-container">
-            <small class="muted">No search yet. Type a product to see the best option I can find.</small>
-          </div>
+      <div class="layout">
+        <div id="best-container">
+          <small class="muted">No search yet. Type a product to see the best option I can find.</small>
         </div>
 
         <div>
-          <div class="chat-log" id="chat">
-            <!-- Query history -->
+          <div class="chat-log" id="chat"></div>
+          <div id="history-container">
+            <!-- Price history from backend -->
           </div>
         </div>
       </div>
@@ -414,8 +439,10 @@
 
     const chat = document.getElementById("chat");
     const msgBox = document.getElementById("msg");
+    const countrySelect = document.getElementById("country");
     const sendBtn = document.getElementById("sendBtn");
     const bestContainer = document.getElementById("best-container");
+    const historyContainer = document.getElementById("history-container");
 
     function addChatEntry(role, text) {
       const div = document.createElement("div");
@@ -434,7 +461,7 @@
       if (!item) return "n/a";
       if (item.price_raw) return item.price_raw;
       if (item.price) return item.price;
-      if (item.price_value) return "£" + item.price_value;
+      if (item.price_value) return "£" + item.price_value.toFixed(2);
       return "n/a";
     }
 
@@ -452,59 +479,59 @@
           host = new URL(link).hostname.toLowerCase();
         }
       } catch (e) {}
-
       const text = (source || "") + " " + host;
       const lower = text.toLowerCase();
-
       if (lower.includes("amazon")) return { icon: "🅰️", name: "Amazon" };
       if (lower.includes("ebay")) return { icon: "🛒", name: "eBay" };
       if (lower.includes("zooplus")) return { icon: "🐾", name: "Zooplus" };
-      if (lower.includes("petsathome") || lower.includes("pets at home"))
-        return { icon: "🏬", name: "Pets at Home" };
+      if (lower.includes("petsathome") || lower.includes("pets at home")) return { icon: "🏬", name: "Pets at Home" };
       if (lower.includes("chewy")) return { icon: "🦴", name: "Chewy" };
-      if (lower.includes("alibaba") || lower.includes("aliexpress"))
-        return { icon: "🌏", name: "Alibaba" };
-
+      if (lower.includes("alibaba") || lower.includes("aliexpress")) return { icon: "🌏", name: "Alibaba" };
       return { icon: "🌐", name: source || host || "Store" };
     }
 
-    function savePriceHistory(query, best) {
-      try {
-        const key = "ps_price_history";
-        const existing = JSON.parse(localStorage.getItem(key) || "[]");
-        const record = {
-          ts: Date.now(),
-          query,
-          title: safeField(best, ["title"], ""),
-          price: best.price_value || null,
-          price_raw: formatPriceRaw(best),
-          source: safeField(best, ["source", "store"], ""),
-        };
-        existing.unshift(record);
-        const trimmed = existing.slice(0, 20);
-        localStorage.setItem(key, JSON.stringify(trimmed));
-        return trimmed;
-      } catch (e) {
-        return [];
+    function renderHistory(history) {
+      if (!history || !history.length) {
+        historyContainer.innerHTML = "";
+        return;
       }
-    }
-
-    function getPriceHistory() {
-      try {
-        return JSON.parse(localStorage.getItem("ps_price_history") || "[]");
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function renderBestAndOthers(data, originalQuery) {
-      if (data.message !== "ok" || !data.best) {
-        bestContainer.innerHTML = `
-          <small class="muted">
-            No prices found for that product.<br>
-            Message from server: ${data.message || "n/a"}
-          </small>
+      let html = `<div class="history-block">
+        <div class="block-title">Recent global checks (newest first)</div>
+        <div class="history-list">
+      `;
+      history.forEach((h) => {
+        const d = new Date(h.ts);
+        const label = isNaN(d.getTime())
+          ? ""
+          : d.toLocaleString("en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        html += `
+          <div class="history-item">
+            <div class="history-main">
+              <span>${h.query || ""}</span>
+              <small class="muted">${label} · ${h.country?.toUpperCase?.() || ""} · ${h.source || "Unknown"}</small>
+            </div>
+            <div class="price-text">${h.price_raw || ""}</div>
+          </div>
         `;
+      });
+      html += `</div></div>`;
+      historyContainer.innerHTML = html;
+    }
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(API_BASE + "/history?limit=20");
+        if (!res.ok) return;
+        const data = await res.json();
+        renderHistory(data);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    function renderBestAndOthers(data, query) {
+      if (data.message !== "ok" || !data.best) {
+        bestContainer.innerHTML = `<small class="muted">No prices found. Message from server: ${data.message || "n/a"}</small>`;
         return;
       }
 
@@ -514,175 +541,23 @@
       const price = formatPriceRaw(b);
       const source = safeField(b, ["source", "store"], "Unknown shop");
       const link = safeField(b, ["link", "product_link"], "#");
-      const rating = safeField(b, ["rating"], null);
-      const reviews = safeField(b, ["reviews"], null);
-      const delivery = safeField(b, ["delivery", "shipping"], "");
       const mode = data.mode || "standard";
+      const country = data.country || countrySelect.value;
 
       const { icon: bestIcon, name: bestStoreName } = getStoreIconAndName(
         source,
         link
       );
 
-      const top = (data.results || []).slice(0, 8);
+      const results = data.results || [];
+      const prices = results
+        .map((r) => r.price_value || parseFloat(r.price_value || 0))
+        .filter((p) => p && p > 0);
 
-      // ---------- Suggestions (AI-ish) ----------
-      const suggestions = [];
-      for (const item of top) {
-        if (item === b) continue;
-        const pvBest = b.price_value || parseFloat(b.price_value || 0);
-        const pvItem = item.price_value || parseFloat(item.price_value || 0);
-        if (!pvItem || pvItem <= 0) continue;
-
-        // Cheaper alternative or same price from different store
-        if (pvItem < pvBest * 0.98 || safeField(item, ["source"], "") !== source) {
-          suggestions.push(item);
-        }
-      }
-      const suggestionSlice = suggestions.slice(0, 3);
-
-      // ---------- Brand insights ----------
-      // Rough brand guess: first word of best title
-      const brandGuess = title.split(" ")[0] || "";
-      const brandMatches = top.filter((item) =>
-        (safeField(item, ["title"], "") + safeField(item, ["brand"], ""))
-          .toLowerCase()
-          .includes(brandGuess.toLowerCase())
-      );
-      let brandHtml = "";
-      if (brandMatches.length > 1 && brandGuess.length > 2) {
-        const prices = brandMatches
-          .map((i) => i.price_value || parseFloat(i.price_value || 0))
-          .filter((p) => p && p > 0);
-        if (prices.length) {
-          const min = Math.min(...prices);
-          const max = Math.max(...prices);
-          const avg =
-            prices.reduce((a, b1) => a + b1, 0) / (prices.length || 1);
-
-          // cheapest store for brand
-          let cheapestItem = brandMatches[0];
-          for (const it of brandMatches) {
-            const v = it.price_value || parseFloat(it.price_value || 0);
-            if (!v) continue;
-            if (
-              !cheapestItem.price_value ||
-              v < (cheapestItem.price_value || parseFloat(cheapestItem.price_value || 0))
-            ) {
-              cheapestItem = it;
-            }
-          }
-          const cheapestSource = safeField(cheapestItem, ["source", "store"], "");
-          brandHtml = `
-            <div class="insights-block">
-              <div class="block-title">Brand insights · ${brandGuess}</div>
-              <div style="font-size:12px;">
-                Offers analysed: <strong>${brandMatches.length}</strong><br>
-                Price range: <strong>£${min.toFixed(2)}</strong> – <strong>£${max.toFixed(2)}</strong><br>
-                Average price: <strong>£${avg.toFixed(2)}</strong><br>
-                Cheapest store for this brand: <strong>${cheapestSource || "n/a"}</strong>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      // ---------- Other options ----------
-      let otherHtml = "";
-      if (top.length > 1) {
-        otherHtml += `<div class="other-block">
-          <div class="block-title">Other options (top ${top.length})</div>
-          <div class="other-list">
-        `;
-        top.forEach((item) => {
-          if (item === b) return;
-          const t = safeField(item, ["title"], "Untitled");
-          const p = formatPriceRaw(item);
-          const s = safeField(item, ["source", "store"], "Unknown");
-          const l = safeField(item, ["link", "product_link"], "#");
-          const { icon, name } = getStoreIconAndName(s, l);
-          otherHtml += `
-            <div class="other-item">
-              <div class="other-item-main">
-                <span>${t}</span>
-                <small class="muted">${s}</small>
-              </div>
-              <div class="price-text">${p}</div>
-              ${
-                l !== "#"
-                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer" class="where-link"><span>${icon}</span><span>${name}</span></a>`
-                  : ""
-              }
-            </div>
-          `;
-        });
-        otherHtml += `</div></div>`;
-      }
-
-      // ---------- Suggestions HTML ----------
-      let suggestionsHtml = "";
-      if (suggestionSlice.length) {
-        suggestionsHtml += `<div class="suggestions-block">
-          <div class="block-title">AI suggestions (alternatives)</div>
-          <div class="suggestions-list">
-        `;
-        suggestionSlice.forEach((item) => {
-          const t = safeField(item, ["title"], "Untitled");
-          const p = formatPriceRaw(item);
-          const s = safeField(item, ["source", "store"], "Unknown");
-          const l = safeField(item, ["link", "product_link"], "#");
-          const { icon, name } = getStoreIconAndName(s, l);
-          suggestionsHtml += `
-            <div class="suggestion-item">
-              <div class="suggestion-main">
-                <span>${t}</span>
-                <small class="muted">${s}</small>
-              </div>
-              <div class="price-text">${p}</div>
-              ${
-                l !== "#"
-                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer" class="where-link"><span>${icon}</span><span>${name}</span></a>`
-                  : ""
-              }
-            </div>
-          `;
-        });
-        suggestionsHtml += `</div></div>`;
-      }
-
-      // ---------- Price history (from localStorage) ----------
-      const history = savePriceHistory(originalQuery, b);
-      let historyHtml = "";
-      if (history && history.length) {
-        historyHtml += `<div class="history-block">
-          <div class="block-title">Recent price checks (this browser)</div>
-          <div class="history-list">
-        `;
-        history.slice(0, 5).forEach((h) => {
-          const date = new Date(h.ts);
-          const label = date.toLocaleDateString("en-GB", {
-            month: "short",
-            day: "numeric",
-          });
-          historyHtml += `
-            <div class="history-item">
-              <div class="history-main">
-                <span>${h.query || ""}</span>
-                <small class="muted">${label} · ${h.source || "Unknown"}</small>
-              </div>
-              <div class="price-text">${h.price_raw || ""}</div>
-            </div>
-          `;
-        });
-        historyHtml += `</div></div>`;
-      }
-
-      const modeLabel =
-        mode === "wholesale_priority"
-          ? "Wholesale-focused"
-          : mode === "retail_fallback"
-          ? "Retail fallback (no wholesale offers found)"
-          : "Standard";
+      const avg = prices.length
+        ? prices.reduce((a, b) => a + b, 0) / prices.length
+        : b.price_value || 0;
+      const max = prices.length ? Math.max(...prices) : b.price_value || 0;
 
       bestContainer.innerHTML = `
         <div class="best-card">
@@ -699,22 +574,16 @@
             <div class="best-price">${price}</div>
             <div class="best-meta">
               <span class="chip-source">
-                <span class="icon">${bestIcon}</span>
-                <span>${bestStoreName}</span>
+                <span>${bestIcon}</span><span>${bestStoreName}</span>
               </span>
-              ${
-                rating || reviews
-                  ? `<span class="chip-rating">⭐ ${rating || "?"}${
-                      reviews ? " (" + reviews + " reviews)" : ""
-                    }</span>`
-                  : ""
-              }
-              ${
-                delivery
-                  ? `<br><small class="muted">${delivery}</small>`
-                  : ""
-              }
-              <br><small class="muted">Mode: ${modeLabel}</small>
+              <br>
+              <small class="muted">Country: ${country.toUpperCase?.() || ""} · Mode: ${
+        mode === "wholesale_priority"
+          ? "Wholesale-focused"
+          : mode === "retail_fallback"
+          ? "Retail fallback"
+          : "Standard"
+      }</small>
             </div>
             <div class="best-actions">
               ${
@@ -726,27 +595,110 @@
             </div>
           </div>
         </div>
-        ${suggestionsHtml}
-        ${otherHtml}
-        ${brandHtml}
-        ${historyHtml}
       `;
+
+      // ---- Other options ----
+      if (results.length > 1) {
+        let otherHtml = `<div class="other-block">
+          <div class="block-title">Other options (top ${results.length})</div>
+          <div class="other-list">
+        `;
+        results.forEach((item) => {
+          if (item === b) return;
+          const t = safeField(item, ["title"], "Untitled");
+          const p = formatPriceRaw(item);
+          const s = safeField(item, ["source", "store"], "Unknown");
+          const l = safeField(item, ["link", "product_link"], "#");
+          const { icon, name } = getStoreIconAndName(s, l);
+          otherHtml += `
+            <div class="other-item">
+              <div class="other-main">
+                <span>${t}</span>
+                <small class="muted">${s}</small>
+              </div>
+              <div class="price-text">${p}</div>
+              ${
+                l !== "#"
+                  ? `<a href="${l}" target="_blank" rel="noopener noreferrer" class="where-link"><span>${icon}</span><span>${name}</span></a>`
+                  : ""
+              }
+            </div>
+          `;
+        });
+        otherHtml += `</div></div>`;
+        bestContainer.innerHTML += otherHtml;
+      }
+
+      // ---- Margin calculator ----
+      const defaultCost = b.price_value || (prices.length ? Math.min(...prices) : 0);
+      const defaultRetail = max || avg || defaultCost;
+
+      bestContainer.innerHTML += `
+        <div class="margin-block">
+          <div class="block-title">Margin calculator (per unit)</div>
+          <div class="margin-grid">
+            <div>
+              <label>Your buy price (cost)</label>
+              <input id="mc-cost" type="number" step="0.01" value="${defaultCost.toFixed(
+                2
+              )}">
+            </div>
+            <div>
+              <label>Your selling price (retail)</label>
+              <input id="mc-sell" type="number" step="0.01" value="${defaultRetail.toFixed(
+                2
+              )}">
+            </div>
+          </div>
+          <div class="margin-metrics" id="mc-metrics"></div>
+          <small class="muted">Defaults are based on best/average prices in this search. Adjust to match your negotiated wholesale and target RRP.</small>
+        </div>
+      `;
+
+      function updateMargin() {
+        const cost = parseFloat(document.getElementById("mc-cost").value || "0");
+        const sell = parseFloat(document.getElementById("mc-sell").value || "0");
+        const metrics = document.getElementById("mc-metrics");
+
+        if (!cost || !sell || sell <= 0) {
+          metrics.innerHTML = `<span class="muted">Enter both prices to see margin.</span>`;
+          return;
+        }
+        const profit = sell - cost;
+        const markup = (profit / cost) * 100;
+        const margin = (profit / sell) * 100;
+
+        metrics.innerHTML = `
+          Profit per unit: <strong>£${profit.toFixed(2)}</strong><br>
+          Markup on cost: <strong>${markup.toFixed(1)}%</strong><br>
+          Gross margin: <strong>${margin.toFixed(1)}%</strong>
+        `;
+      }
+
+      document.getElementById("mc-cost").addEventListener("input", updateMargin);
+      document.getElementById("mc-sell").addEventListener("input", updateMargin);
+      updateMargin();
     }
 
     async function send() {
       const text = msgBox.value.trim();
       if (!text) return;
+      const country = countrySelect.value;
 
-      addChatEntry("you", text);
+      addChatEntry("you", `${text} (${country.toUpperCase()})`);
       msgBox.value = "";
       msgBox.focus();
 
       sendBtn.disabled = true;
-      bestContainer.innerHTML = `<small class="muted">Searching for “${text}”…</small>`;
+      bestContainer.innerHTML = `<small class="muted">Searching ${country.toUpperCase()} for “${text}”…</small>`;
 
       try {
         const res = await fetch(
-          API_BASE + "/search?query=" + encodeURIComponent(text)
+          API_BASE +
+            "/search?query=" +
+            encodeURIComponent(text) +
+            "&country=" +
+            encodeURIComponent(country)
         );
 
         if (!res.ok) {
@@ -760,10 +712,11 @@
         addChatEntry(
           "bot",
           data.message === "ok"
-            ? "Found " + (data.results ? data.results.length : 0) + " option(s)."
+            ? `Found ${data.results ? data.results.length : 0} option(s).`
             : "Search message: " + (data.message || "n/a")
         );
         renderBestAndOthers(data, text);
+        loadHistory(); // refresh history after each search
       } catch (err) {
         addChatEntry("bot", "Error: " + err.message);
         bestContainer.innerHTML = `<small class="muted">Error: ${err.message}</small>`;
@@ -779,36 +732,8 @@
       }
     });
 
-    // On load, show last few history items (if any)
-    (function initHistoryOnLoad() {
-      const history = getPriceHistory();
-      if (!history.length) return;
-      bestContainer.innerHTML = `<div class="history-block">
-        <div class="block-title">Recent price checks (this browser)</div>
-        <div class="history-list">
-          ${history
-            .slice(0, 5)
-            .map((h) => {
-              const d = new Date(h.ts);
-              const label = d.toLocaleDateString("en-GB", {
-                month: "short",
-                day: "numeric",
-              });
-              return `
-                <div class="history-item">
-                  <div class="history-main">
-                    <span>${h.query || ""}</span>
-                    <small class="muted">${label} · ${h.source || "Unknown"}</small>
-                  </div>
-                  <div class="price-text">${h.price_raw || ""}</div>
-                </div>
-              `;
-            })
-            .join("")}
-        </div>
-        <small class="muted">Search again to update your history.</small>
-      </div>`;
-    })();
+    // Load initial history on page load
+    loadHistory();
   </script>
 </body>
 </html>
